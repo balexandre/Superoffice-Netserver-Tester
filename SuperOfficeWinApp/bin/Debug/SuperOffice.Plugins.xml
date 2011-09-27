@@ -1,0 +1,2736 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SuperOffice.Plugins</name>
+    </assembly>
+    <members>
+        <member name="T:SuperOffice.CRM.Documents.DocumentLockSemantics">
+            <summary>
+            Locking semantics requested/applied to a document
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.DocumentLockSemantics.None">
+            <summary>
+            Neither locking nor versioning is requested for the document
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.DocumentLockSemantics.Locking">
+            <summary>
+            Locking, but not versioning, is requested for the document
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.DocumentLockSemantics.Versioning">
+            <summary>
+            Versioning is requested for the document (locking is implied)
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.CheckoutState">
+            <summary>
+            Enum listing the possible checkout states of a document, as seen from outside the document plugin
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.CheckoutState.NotCheckedOut">
+            <summary>
+            Document is not checked out
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.CheckoutState.CheckedOutOwn">
+            <summary>
+            Document is checked out, to the user making the query
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.CheckoutState.CheckedOutOther">
+            <summary>
+            Document is checked out, to a user different from the one making the query
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.CheckoutState.LockingNotSupported">
+            <summary>
+            Locking is not supported or selected for this document. The document is always
+            'writeable' in the sense of not being protected by any locks. The document may
+            still be read-only due to Sentry constraints.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.CommandInfo">
+            <summary>
+            An instance of this class describes a custom command, declared and implemented by a document plugin
+            </summary>
+            <remarks>
+            Depending on the return type indicated in the command, the command might be filtered (not shown) by the GUI. For instance, commands
+            that return values of type <see cref="!:SuperOffice.CRM.Documents.ReturnType.SoProtocol"/> would not
+            be shown by the (first release of the) Pocket CRM client, since that client does not use nor support soprotocol-type
+            navigation. Return types <see cref="!:SuperOffice.CRM.Documents.ReturnType.None"/> and <see cref="!:SuperOffice.CRM.Documents.ReturnType.Message"/> 
+            will be supported by all clients. Non-GUI clients should save Message-type return values in their log.
+            <para/>
+            A command may be executed on a document at any time. Constraints, such as some commands requiring the
+            document to be checked out, must be enforced by the document plugin - the rest of the system has no knowledge
+            of command semantics.
+            <para/>
+            A document plugin with complex custom workflow and GUI requirements can use the returntype SoProtocol to
+            force navigation subsequent to execution of a command, and in this way chain a set of operations. It is 
+            OK to have 'secret' commands, i.e., commands that are not declared through <see cref="!:SuperOffice.CRM.Documents.GetDocumentProperties"/>;
+            such secret commands will not be shown in any GUI, but will still be available through the document services.
+            </remarks>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CommandInfo.Name">
+            <summary>
+            The programmatic name of the command, uniquely identifying this command for the document plugin. 
+            <para/>
+            Command names need not be unique between different document plugins, but have to be unique within one plugin.
+            Commands should generally not be cached by NetServer or clients, since they are assumed to be dependent
+            on a particular document and its state.
+            <para/>
+            Commands for standard Check out, Check in and Undo Check out are not custom commands; they will be shown
+            by GUI logic automatically if the document plugin declares that it supports locking. Similarly, commands
+            for showing a version list are automatically added if such functionality is supported.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CommandInfo.DisplayName">
+            <summary>
+            Display name, shown in menus, command lists and similar GUI elements.
+            <para/>
+            The name should be kept short. Resource tags, such as [SR_OK], are allowed and will be substituted runtime
+            with the proper languages. A document plugin can have a resource module added to the client to substitute
+            any custom tags.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CommandInfo.DisplayTooltip">
+            <summary>
+            Tooltip string associate with the command - can be a literal or a tooltip hint.
+            <para/>
+            Simple tooltips can be literals, and can contain resource tags (including culture-independent
+            formatted dates, see the <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class
+            for examples and encoding methods.
+            <para/>
+            More complex tooltips can be represented as tooltip hints, which cause a runtime call to the
+            tooltip provider system. A document plugin can add its own tooltip provider in order to process
+            such hints into the final tooltip text. This is the recommended approach for tooltips that are
+            time-consuming to precalculate.
+            <para/>
+            Tooltip hints can be constructed using the 
+            <see cref="!:SuperOffice.CRM.Tooltips.TooltipProvider"/>.<see cref="!:SuperOffice.CRM.Tooltips.TooltipProvider.MakeTooltipHint"/>
+            method. They are parsed by provider plugins, either standard ones or custom plugins that can be written
+            together with a document plugin.
+            <para/>
+            This member may be blank, if no tooltip is provided.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CommandInfo.IconHint">
+            <summary>
+            Icon hint, which should resolve to an icon that is compatible in size with a standard menu
+            or dropdown list font. May be blank.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CommandInfo.ReturnType">
+            <summary>
+            Declaration of what kind of return type the execution of this command will give
+            <para/>
+            A client may use this field to filter out some commands - for instance, a client that does not support
+            soprotocol or custom navigation, would only show commands declared to return <see cref="!:SuperOffice.CRM.Documents.ReturnType.None"/>
+            or <see cref="!:SuperOffice.CRM.Documents.ReturnType.Message"/>.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.VersionInfo">
+            <summary>
+            An instance of this class represents information about one version of one document
+            </summary>
+            <remarks>
+            Document plugins that support versioning are responsible for managing versions and provinding these objects.
+            Storage/generation of these properties is the responsibility of the plugin.
+            <para/>
+            Instances of this class can be retrieved using <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadVersionInfo(System.String,System.Int32,System.String)"/>
+            and <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetVersionList(System.String,System.Int32)"/> methods.
+            </remarks>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.ExternalReference">
+            <summary>
+            The document plugin's key that uniquely identifies a document; stored in the externalReference field of the document table
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.DocumentId">
+            <summary>
+            The document Id that uniquely identifies the document within the SuperOffice database
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.VersionId">
+            <summary>
+            The document plugin's version id that uniquely identifies one version of a document. If versioning is not
+            supported, this will be blank. When versioning is supported, blank values imply the <b>latest checked-in</b> version.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.CheckedInDate">
+            <summary>
+            The date that this version was checked in and became official
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.CheckedInByName">
+            <summary>
+            Name (nicely formatted) of the user/person who performed the checkin
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.CheckedInByAssociateId">
+            <summary>
+            Associate id of the user who performed the checkin
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.Description">
+            <summary>
+            Arbitrary description string
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.DisplayText">
+            <summary>
+            A short description, suitable for display in a popup menu or dropdown list of versions.
+            <para/>
+            It is suggested that this string contain user initials, checkin date and the first few words of the description,
+            but it is up to the document plugin to provide whatever it thinks fits the purpose. In menus, the full Description
+            property may be used as a tooltip by the client GUI - though there is no guarantee of that, since there are potentially
+            many clients.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.VersionInfo.ExtraFields">
+            <summary>
+            Private metadata, owned by the document plugin. This set of metadata is related directly to the version that 
+            this VersioNinfo structure describes; metadata related to the document as a whole is retrieved using the 
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadMetaData(System.String,System.Int32)"/> method.
+            <para/>
+            The string should be formatted like a query string, i.e., name1=value1&amp;name2=value2... - this format,
+            instead of a string/string dictionary avoids serialization problems, even though it is somewhat less
+            efficient
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.TemplateInfo">
+            <summary>
+            Information about a document template, i.e., a document that generally contains unresolved merge tags
+            and that is used as the source for creating new documents
+            </summary>
+            <remarks>
+            Document templates have traditionally been stored as files in the so_arc\template directory. They can now
+            also be stored in repositories managed by document plugins; this class is the return value from the enumeration
+            method used to list available templates.
+            <para/>
+            It is expected that document templates are like any other document, but marked in some way that allows the document
+            plugin to distinguish them. How templates get into the repository is not a subject for the document API.
+            <para/>
+            Document templates must be addressable using the same kind of 'externalReference' key as other documents, and must be
+            possible to retrieve using the GetDocumentAsStream api.
+            </remarks>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.TemplateInfo.Name">
+            <summary>
+            Name of the document, shown in lists etc to the user
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.TemplateInfo.Description">
+            <summary>
+            Document description, shown as a tooltip or in some extended description area
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.TemplateInfo.ExternalReference">
+            <summary>
+            Unique key that identifies the document so it can be retrieved
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.TemplateInfo.PluginId">
+            <summary>
+            ID of plugin that stores this template, so it can be retrieved
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.CheckoutInfo">
+            <summary>
+            Information about the checked-out state of one document, describing whether it is checked out,
+            and to whom.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CheckoutInfo.State">
+            <summary>
+            Checkout state
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CheckoutInfo.AssociateId">
+            <summary>
+            Id of associate who has currently checked out the document; 0 if it is not checked out, 
+            or is checked out by someone who is not a SuperOffice user
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.CheckoutInfo.Name">
+            <summary>
+            Name of person who has currently checked out the document; blank if it is not checked out.
+            This property may also be blank if the <see cref="P:SuperOffice.CRM.Documents.CheckoutInfo.AssociateId"/> is nonzero; NetServer will
+            retrieve the associates' name as needed.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants">
+            <summary>
+            String constants for capability and property names
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants.Capabilities">
+            <summary>
+            String constants for document plugin capability names
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.Locking">
+            <summary>
+            Does the plugin support locking?  Values are <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/>,
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Optional"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Mandatory"/>. 
+            <para/>False implies that the feature is available. Optional implies that it is available and can
+            be enabled or disabled on a per-document basis. Mandatory implies that all
+            documents will have locking and that this feature cannot be disabled.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.FastLockStatus">
+            <summary>
+            Does the plugin support efficient querying of checkout status?  Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.True"/>
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.Versioning">
+            <summary>
+            Does the plugin support versioning? Versioning support also implies locking support. 
+            Values are <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/>,
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Optional"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Mandatory"/>. 
+            <para/>False implies that the feature is available. Optional implies that it is available and can
+            be enabled or disabled on a per-document basis. Mandatory implies that all
+            documents will have locking and that this feature cannot be disabled.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.FastVersionList">
+            <summary>
+            Does the plugin support efficient querying of the version list for a document?  Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.True"/>
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.FastExists">
+            <summary>
+            Does the plugin support efficient querying of document existence? Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.True"/>
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.MaxDocumentSize">
+            <summary>
+            Maximum supported document content size. Value should be parseable as an integer in the InvariantCulture, specifying number of bytes.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Capabilities.Timeout">
+            <summary>
+            General timeout value. NetServer may abandon document plugin calls if this value is exceeded.
+            Value should be parseable as an integer in the InvariantCulture, specifying number of seconds.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants.Values">
+            <summary>
+            String constants for capability and property values, where fixed values are used
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.True">
+            <summary>
+            The value used to indicate a true/present/supported status
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.False">
+            <summary>
+            The value used to indicate a false/missing/not supported status
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.Optional">
+            <summary>
+            The value used to indicate an optional status
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.Mandatory">
+            <summary>
+            The value used to indicate a mandatory status
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.Url">
+            <summary>
+            'url', the value of the <see cref="!:PreferredOpen"/> property that specifies that URL (WebDAV) is the preferred
+            access method to this document.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Values.Stream">
+            <summary>
+            'stream', the value of the <see cref="!:PreferredOpen"/> property that specifies that stream
+            access is preferred for this document. Note that stream access must always be supported,
+            even if <see cref="!:PreferredOpenUrl"/> is returned.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants.Properties">
+            <summary>
+            String constants for document-dependent property names
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Properties.HasLocking">
+            <summary>
+            Can this document be locked for changes?
+            Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.True"/>
+            </summary>
+            <remarks>
+            Versioning implies Locking, so if HasVersioning is true, then 
+            HasLocking <b>must</b> be true also.
+            </remarks>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Properties.HasVersioning">
+            <summary>
+            Is this document turned on for versioning?
+            Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.False"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.True"/>
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Properties.Tooltip">
+            <summary>
+            A descriptive string that is suitable for display as a tooltip; may be blank
+            <para/>
+            Simple tooltips can be literals, and can contain resource tags (including culture-independent
+            formatted dates, see the <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class
+            for examples and encoding methods.
+            <para/>
+            More complex tooltips can be represented as tooltip hints, which cause a runtime call to the
+            tooltip provider system. A document plugin can add its own tooltip provider in order to process
+            such hints into the final tooltip text. This is the recommended approach for tooltips that are
+            time-consuming to precalculate.
+            <para/>
+            Tooltip hints can be constructed using the 
+            <see cref="!:SuperOffice.CRM.Tooltips.TooltipProvider"/>.<see cref="!:SuperOffice.CRM.Tooltips.TooltipProvider.MakeTooltipHint"/>
+            method. They are parsed by provider plugins, either standard ones or custom plugins that can be written
+            together with a document plugin.
+            <para/>
+            This member may be blank, if no tooltip is provided.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Properties.PreferredOpen">
+            <summary>
+            What is the preferred method for editing documents? Values are 
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Url"/> and
+            <see cref="F:SuperOffice.CRM.Documents.Constants.Values.Stream"/>, 
+            depending on whether the plugin supports WebDAV and prefers this method.
+            <para/>
+            The client GUI is not guaranteed to respect preferred-open = 'url'; depending on the platform and other
+            circumstances, the client may still use the GetDocumentStream interface to get the document content.
+            <para/>
+            If a document is opened through WebDAV, SuperOffice code no longer controls the flow of events and
+            cannot be responsible for proper phasing, access control or other features.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.Properties.FileType">
+            <summary>
+            The file type of the document, such as DOC, PDF, XLS or whatever. This is used by NetServer if
+            it needs to analyze the file content, for instance for freetext indexing. It is also used to set
+            the extension of the file name generated for download/editing, and will usually control
+            which document editor is loaded by the client operating system to edit the document.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants.GUI">
+            <summary>
+            String constants related to custom Graphical User Interface
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.Constants.GUI.Names">
+            <summary>
+            String constants for predefined GUI names that will be requested from a document plugin
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.Documents.Constants.GUI.Names.DocumentDialog">
+            <summary>
+            The guiName for the Document Dialog, where document plugins have a tab for custom fields
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Factory.PrioritizedPluginAttribute">
+            <summary>
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Factory.PluginAttribute">
+            <summary>
+            Attribute that needs to be declared for all plug-ins.  
+            </summary>
+            <remarks>Plug-ins must also implement the interface <see cref="T:SuperOffice.Factory.IPlugin"/>.</remarks>
+        </member>
+        <member name="M:SuperOffice.Factory.PluginAttribute.#ctor(System.String,System.Type)">
+            <summary>
+            Default constructor for the plug-in attribute.
+            </summary>
+            <param name="name">Name of the plug-in provided by the plug-in manufacturer.</param>
+            <param name="pluginInterface">The type of the plugin interface.</param>
+        </member>
+        <member name="P:SuperOffice.Factory.PluginAttribute.Name">
+            <summary>
+            Name of the plug-in provided by the plug-in manufacturer.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.Factory.PluginAttribute.IsSuperOfficeSigned">
+            <summary>
+            </summary>
+        </member>
+        <member name="P:SuperOffice.Factory.PluginAttribute.PluginInterface">
+            <summary>
+            The interface this plugin must implent.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Factory.PrioritizedPluginAttribute.#ctor(System.String,System.Type,System.Int32)">
+            <summary>
+            </summary>
+        </member>
+        <member name="P:SuperOffice.Factory.PrioritizedPluginAttribute.Priority">
+            <summary>
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.IContactInfo">
+            <summary>
+            Interface providing information about a contact
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.IContactInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            Get user-defined field 1-10 of the decimal (.NET double) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-10).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IContactInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            Get user-defined field 1-60 of the whole (.NET Int32) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-60).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IContactInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            Get user-defined field 1-49 of the text (.NET string) type.
+            </summary>
+            <param name="fieldNo">Field number (1-49).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IContactInfo.GetInternationalAddress(System.Int32)">
+            <summary>
+            Get a line from the international address
+            </summary>
+            <param name="lineNo"></param>
+            <returns></returns>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.ContactId">
+            <summary>
+            Primary key of the contact
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Name">
+            <summary>
+            Company name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Department">
+            <summary>
+            Department
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.OrganisationNumber">
+            <summary>
+            Organisation number
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Phone">
+            <summary>
+            Phone
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PhoneId">
+            <summary>
+            Phone Id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Fax">
+            <summary>
+            Fax
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.FaxId">
+            <summary>
+            Fax id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.FaxStripped">
+            <summary>
+            Fax. Any non digit characters are stripped.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.EMail">
+            <summary>
+            Primary e-mail address.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.EMailId">
+            <summary>
+            Primary e-mail address id.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Web">
+            <summary>
+            Primary web address.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.WebId">
+            <summary>
+            Primary web address id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.AddressLine1">
+            <summary>
+            Postal address line 1. If this is empty, street address line 1
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressLine1">
+            <summary>
+            Postal Address, line 1
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressLine2">
+            <summary>
+            Postal Address, line 2
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressLine3">
+            <summary>
+            Postal Address, line 3
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressCity">
+            <summary>
+            Postal town
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressCityFull">
+            <summary>
+            Postal town, state/province and zipcode (for American, Canadian and Australian addresses, e.g. Bedford, MA 01730)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressZip">
+            <summary>
+            Postcode. (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressPrefix">
+            <summary>
+            Postcode prefix
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressState">
+            <summary>
+            State/province (for American, Canadian and Australian addresses). (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressZipCity">
+            <summary>
+            Postcode and postal town (e.g. 0572 OSLO)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressCounty">
+            <summary>
+            County (for UK addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressLine1">
+            <summary>
+            Street Address, line 1
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressLine2">
+            <summary>
+            Street Address, line 2
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressLine3">
+            <summary>
+            Street Address, line 3
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressCityFull">
+            <summary>
+            Streetaddress town, state/province and zipcode (for American, Canadian and Australian addresses, e.g. Bedford, MA 01730)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressCity">
+            <summary>
+            Street town
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressZip">
+            <summary>
+            Postcode. (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressZipGerman">
+            <summary>
+            Postcode for street address (for German addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostalAddressLine1And3">
+            <summary>
+            First address line, including Mail Stop (for American addresses). 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.StreetAddressState">
+            <summary>
+            State/province (for American, Canadian and Australian addresses). (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.LineFeedAustraliaUK">
+            <summary>
+            Line feed for Australian and UK treatment of counties and postcodes
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.LineFeedGermany">
+            <summary>
+            Line feed for internal post in Germany
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Category">
+            <summary>
+            Category
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Business">
+            <summary>
+            Business
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.CountryCode">
+            <summary>
+            Country code
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Country">
+            <summary>
+            Country
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Country2">
+            <summary>
+            Country if different from the sender's country
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.CountryId">
+            <summary>
+            Country ID from database
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.CountryEnglish">
+            <summary>
+            English name of country
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.County">
+            <summary>
+            County
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.PostCode">
+            <summary>
+            Postcode including country prefix (e.g. N-0163 for a postcode in Norway)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.CountyZipUK">
+            <summary>
+            County and postcode (for UK addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.OurContact">
+            <summary>
+            Our contact
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Code">
+            <summary>
+            Code
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IContactInfo.Number">
+            <summary>
+            Number
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.ICustomUIProvider">
+            <summary>
+            Interface used by plugin modules that wish to declare a custom GUI, using the PageBuilder
+            </summary>
+        </member>
+        <member name="M:SuperOffice.UI.Configuration.ICustomUIProvider.GetCustomUi(System.String,System.String,System.String[])">
+            <summary>
+            Get a custom GUI for a given operation and client
+            </summary>
+            <remarks>
+            A custom GUI is declared as a View, containing one or more ControlGroups, in turn containing
+            controls. Standard SuperOffice controls can be used for simpler GUI's, or a custom control
+            with arbitrary internal logic can be implemented and requested through this mechanism.
+            <para/>
+            The clienthint is used to inform the document plugin of what kind of client is at the other
+            end. A document plugin or other custom UI provider 
+            is free to ignore this field, but may find it useful to adapt to
+            gross differences between user interface platforms - for instance,
+            large-screen Web vs. handheld device.
+            <para/>Note that a plugin implementing this interface might choose to present a GUI directly
+            when running in a context with direct access to the user, as on a Windows Client - in this
+            case returning NULL as the return value (since the GUI has already been run by the time
+            the call returns). On non-interactive clients that implement the PageBuilder controlled
+            user interface (like 6.web), a declarative approach is used instead.		/// </remarks>
+            <param name="guiName">Name of GUI element requested. The name 'SuperOffice:DocumentDialog' is reserved
+            and denotes the custom GUI view in the document dialog. Other custom GUI names are defined by the
+            document (or other) plugin itself, and should be prefixed with the plugin name to keep them unique.</param>
+            <param name="clientHint">Client hint, currently SuperOffice:None', 'SuperOffice:6.Web' 
+            and 'SuperOffice:PocketCRM' are used. See the class 
+            <see cref="T:SuperOffice.UI.Configuration.Constants.Clients"/> for predefined values.
+            </param>
+            <param name="additionalData">Array of strings containing whatever additional data the plugin
+            may need. This parameter is intended for authors of more complex custom GUI's and works as
+            a tunnel between the ultimate client and the document plugin. Standard GUI made by SuperOffice,
+            such as a context menu connected to a document item in an archive, will not populate this
+            member.<br/>It is strongly suggested that the convention of using name=value for each string
+            array element be followed here. Also, names should be prefixed with the plugin name to
+            distinguish them, in case more than one party injects values.</param>
+            <returns>GUI structure, rooted in a View object. If there is no custom GUI for this name, null 
+            should be returned.</returns>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.Constants">
+            <summary>
+            Constants related to custom UI
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.Constants.Clients">
+            <summary>
+            String constants for predefined client names, used when requesting a GUI from a document plugin
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Constants.Clients.SixWeb">
+            <summary>
+            The 6.web (full size) client
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Constants.Clients.SixWin">
+            <summary>
+            The 6.win (full size) client
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Constants.Clients.PocketCRM">
+            <summary>
+            The PocketCRM client, running on a phone or handheld device
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Constants.Clients.None">
+            <summary>
+            A client that has no user interface at all; declared custom GUIs will not be instantiated in any form.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Factory.IPlugin">
+            <summary>
+            Interface to be implemented by all plugins.
+            </summary>
+            <remarks>The plug-in must also be declared with the <see cref="T:SuperOffice.Factory.PluginAttribute"/></remarks>
+        </member>
+        <member name="T:SuperOffice.CRM.IDocumentInfo">
+            <summary>
+            Interface providing information about the document.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.IDocumentInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            User-defined field 1-10 of the decimal (.NET double) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-10).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IDocumentInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            Get user-defined field 1-60 of the whole (.NET Int32) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-60).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IDocumentInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            Get user-defined field 1-49 of the text (.NET string) type.
+            </summary>
+            <param name="fieldNo">Field number (1-39).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.AssociateId">
+            <summary>
+            Owner of the document
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.AssociateLoginName">
+            <summary>
+            Login name of the document owner
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.AssociateFullName">
+            <summary>
+            Full name of the document owner
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.AppointmentId">
+            <summary>
+            Primary key of the appointment exteding the document record.  This is NOT the appointment the document is linked to.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.DocumentId">
+            <summary>
+            Primary key of the document record
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.ContactId">
+            <summary>
+            Primary key of the contact the document is related to
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.PersonId">
+            <summary>
+            Primary key of the person the document is related to
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.ProjectId">
+            <summary>
+            Primary key of the project the document is related to
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.ActiveDate">
+            <summary>
+            Active date of the document.  <see cref="P:SuperOffice.CRM.IDocumentInfo.Registered"/> is used in SO_ARC for calculating days
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.PublishStartDate">
+            <summary>
+            Document, start date for publising.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.PublishEndDate">
+            <summary>
+            Document, end date for publishing.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Registered">
+            <summary>
+            The time the document record is created.  This is used to calculate the path of the document in SO_ARC
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Name">
+            <summary>
+            Get or set file name, without archive path, user or period prefixes
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Header">
+            <summary>
+            Visible document name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Description">
+            <summary>
+            Description of the document
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.OurRef">
+            <summary>
+            Our reference
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.YourRef">
+            <summary>
+            Your reference
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Salutation">
+            <summary>
+            Salutation as entered, or created automatically from the contact (Mr/Ms and last name). 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.Attention">
+            <summary>
+            Selected contact in the Document dialog or text that is specified in the Company field for a recipient of the document
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.ArchiveProvider">
+            <summary>
+            Reference to archive provider and the Notes Link. Default = 0, this means SOArc plugin.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.ExternalReference">
+            <summary>
+            Get or set external reference (notes ID, email ID, other ID used by the archive provider)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.SerialNumber">
+            <summary>
+            Ascending serial number (different for every template)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.LockSemantics">
+            <summary>
+            Locking semantics requested/applied to a document
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentInfo.DocumentTemplateInfo">
+            <summary>
+            Information about the document template
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.IAppointmentInfo">
+            <summary>
+            Interface providing information about the appointment.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.IAppointmentInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            User-defined field 1-10 of the decimal (.NET double) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-10).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IAppointmentInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            Get user-defined field 1-60 of the whole (.NET Int32) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-60).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IAppointmentInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            Get user-defined field 1-49 of the text (.NET string) type.
+            </summary>
+            <param name="fieldNo">Field number (1-39).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.AppointmentId">
+            <summary>
+            Primary key for the appointment
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.AssociateId">
+            <summary>
+            Owner associate id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.AssociateName">
+            <summary>
+            The appointment's owner, name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.AssociateOwnerName">
+            <summary>
+            Name of owner associate
+            If this is a child booking, we want to look to the mother appointment's owner
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ContactId">
+            <summary>
+            Associated contact id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ContactName">
+            <summary>
+            Associated contact name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PersonId">
+            <summary>
+            Associated person id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PersonName">
+            <summary>
+            The appointment's person, name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ProjectId">
+            <summary>
+            Associated project id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ProjectName">
+            <summary>
+            Associated project name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.Description">
+            <summary>
+            Appointment description
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.DescriptionLine">
+            <summary>
+            First line of appointment description
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.CreationDate">
+            <summary>
+            The appointment's creation date, formatted YYYYMMdd
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.CreationTime">
+            <summary>
+            The appointment's creation time formatted HHmmss
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.UpdatedDate">
+            <summary>
+            The date of the last update, formatted YYYYMMdd
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.UpdatedTime">
+            <summary>
+            The time of the last update, formatted HHmmss
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.UpdatedCount">
+            <summary>
+            Number of times the appointment has been updated. (Only counts from version SIX)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.Type">
+            <summary>
+            Activitytype
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.InvitationUrl">
+            <summary>
+            The connection from "superoffice:invitations" to the invitation dialog box 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.InvitationClickText">
+            <summary>
+            The connection from "Click here to open the SuperOffice SIX dialog box" shown for registered contacts. Blank if the recipient not is a registered contact
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.InvitationFormattedList">
+            <summary>
+            Formatted list of inviteted ??, made for iCal
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.InviteeId">
+            <summary>
+            User ID for this rows invitee (Used with bookings) 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.InviteeName">
+            <summary>
+            The name of this rows invited person
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PublishStartDate">
+            <summary>
+            Appointment, start date for publication
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PublishEndDate">
+            <summary>
+            Appointment, end date for publication
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.StartTime">
+            <summary>
+            The appointment's starttime, formatted HHmmss
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.EndTime">
+            <summary>
+            The appointment's endtime, formatted HHmmss
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.StartDate">
+            <summary>
+            Date or deadline if this is a task or an appointment
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.EndDate">
+            <summary>
+            The appointment's enddate, formatted YYYYMMdd
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.EMail">
+            <summary>
+            The appointment's owner's emailaddress
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.FreeBusy">
+            <summary>
+            Free/Busy time
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.Location">
+            <summary>
+            Appointment location
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.StartDateLabel">
+            <summary>
+            Date or deadline label
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ICalPriority">
+            <summary>
+            Priority on ical format
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingTooltip">
+            <summary>
+            The appointment's tooltip for repeating appointments
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingEndDate">
+            <summary>
+            The end date for the appointment's repeating pattern, formatted as yyyyMMdd
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.MainRepeatingPattern">
+            <summary>
+            The main feature of the appointments repeating pattern, formatted like the Daily pattern "FREQ=DAILY;" for example
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.SubRepeatingPattern">
+            <summary>
+            The secondary feature of the appointment's repeating pattern, formatted as the sub-pattern Daily Workday "BYDAY=MO,TU,WE,TH,FR;", for example
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.StartDateTimeAndDuration">
+            <summary>
+            The appointment's date and time. E.g. 30.03.2005 (16:00)-(17:00).
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.Priority">
+            <summary>
+            The appointment's priority in clear text
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PriorityId">
+            <summary>
+            The appointment's priority by number, 1 = low, 2 = medium, 3 = high
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingPattern">
+            <summary>
+            The entire appointment's repeating pattern, formatted as "RRULE:" + bpat + bsub + bunt
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingPatternEnd">
+            <summary>
+            Repeating pattern end date
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingPatternWeekStart">
+            <summary>
+            Repeating pattern week start
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingStartDate">
+            <summary>
+            The start date for the appointment's repeating pattern, formatted as YYYYMMdd
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingPatternText">
+            <summary>
+            The text "This appointment is part of a repeating pattern:"
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingPatternText2">
+            <summary>
+            The text "See below in this message for a list of the repeating appointments."
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.RepeatingAppointmentId">
+            <summary>
+            Appointment ID for any repeating appointments
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.ICalId">
+            <summary>
+            Unique id made for iCal. SerialnoDappointmentIdDinvitedIdDupdated. Where D is a separator 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.State">
+            <summary>
+            The state of the appointment: "TENTATIVE", "CONFIRMED" eller "CANCELLED"
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IAppointmentInfo.PreferredTZLocation">
+            <summary>
+            The preferred timezone for the appointment
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.ISaleInfo">
+            <summary>
+            Interface providing information about a sale.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.ISaleInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            User-defined field 1-10 of the decimal (.NET double) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-10).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.ISaleInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            Get user-defined field 1-60 of the whole (.NET Int32) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-60).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.ISaleInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            Get user-defined field 1-49 of the text (.NET string) type.
+            </summary>
+            <param name="fieldNo">Field number (1-39).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.SaleId">
+            <summary>
+            Primary key of the sale record
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Associate">
+            <summary>
+            Owner of the sale
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Number">
+            <summary>
+            Sale number
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Title">
+            <summary>
+            Title of the sale
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Amount">
+            <summary>
+            Sale amount
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Currency">
+            <summary>
+            Sale currency
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.PublishStartDate">
+            <summary>
+            Sale, end date for publishing
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.PublishEndDate">
+            <summary>
+            Sale, start date for publishing
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Type">
+            <summary>
+            Sale type - an MDO list item name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Stage">
+            <summary>
+            Sale stage - an MDO list item name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Credited">
+            <summary>
+            Credited to - an MDO list item name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Competitor">
+            <summary>
+            Main Competitor for sale - an MDO list item name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Probability">
+            <summary>
+            Probability percent - default derived from Stage list item.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.NextDueDate">
+            <summary>
+            Date of the first uncompleted activity. 
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Reason">
+            <summary>
+            Reason the sale is lost/sold etc
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.SaleDate">
+            <summary>
+            Expected closing date
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISaleInfo.Status">
+            <summary>
+            Open/Sold/Lost/Stalled
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.IProjectInfo">
+            <summary>
+            Interface providing information about a project.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.IProjectInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            User defined field x of type integer
+            </summary>
+            <param name="fieldNo">Field number (1-60)</param>
+            <returns>User-defined field value</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IProjectInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            User defined field x of type double
+            </summary>
+            <param name="fieldNo">Field number (1-10)</param>
+            <returns>User-defined field value</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IProjectInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            User defined field x of type string
+            </summary>
+            <param name="fieldNo">Field number (1-49)</param>
+            <returns>User-defined field value</returns>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.ProjectId">
+            <summary>
+            Primary key for the project
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Name">
+            <summary>
+            Name of the project
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Description">
+            <summary>
+            Description of the project
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Manager">
+            <summary>
+            Project manager
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Number">
+            <summary>
+            Project number
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.EventDate">
+            <summary>
+            Project, event date
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.PublishStartDate">
+            <summary>
+            Project, start date for publishing.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.PublishEndDate">
+            <summary>
+            Project, end date for publishing
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Status">
+            <summary>
+            Project status
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Type">
+            <summary>
+            Project type
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.Web">
+            <summary>
+            The project's primary web address
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IProjectInfo.WebId">
+            <summary>
+            The project's primary web address, ID (hidden, unique ID).
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.ReturnType">
+            <summary>
+            How should a return value from an API call or command be interpreted by the caller
+            </summary>
+            <remarks>
+            Together with the <see cref="T:SuperOffice.CRM.ReturnInfo"/> data class, this type opens the possibility
+            for programming fairly complex workflows, with multiple roundtrips chained from one 
+            return to the next.
+            <para/>
+            The disadvantage is that it places a responsibility on the author for choosing which
+            clients to support, and to what extent - noting that the number of clients is always
+            increasing, and that clients can have vastly different capabilities; from server-room
+            sync processes that have no user interaction at all, to full-featured web or windows
+            clients.
+            </remarks>
+        </member>
+        <member name="F:SuperOffice.CRM.ReturnType.None">
+            <summary>
+            There is no return value to be parsed
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.ReturnType.Message">
+            <summary>
+            The return value is a string, to be shown to the user as a message
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.ReturnType.SoProtocol">
+            <summary>
+            The return value is an soprotocol-compliant navigation string, to be parsed
+            according to the rules for soprotocol strings
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.ReturnType.CustomGui">
+            <summary>
+            The return value is the name of a custom GUI. The GetCustomGui method on the 
+            document plugin will be invoked, and the resulting GUI rendered.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.CRM.ReturnType.Other">
+            <summary>
+            The return value is intended for custom processing; this implies that the document plugin
+            has installed some component on the intended client that will intercept and handle
+            this return value. 
+            <br/>Note that this requires advanced knowledge of the client and its
+            construction and navigation. Also note that this will make the functionality client-specific,
+            so that it may not be available or work as intended on clients not specifically
+            supported or known.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.ReturnInfo">
+            <summary>
+            Return value object for Document Plugin API calls
+            </summary>
+            <remarks>
+            Many document API calls return this object, which contains both information about which
+            document it relates to, a result string value, and a result type that defines how this result
+            should be parsed and processed by the caller.
+            <para/>
+            See the <see cref="T:SuperOffice.CRM.ReturnType"/> enum for more details and some caveats.
+            </remarks>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.ExternalReference">
+            <summary>
+            The document plugin's key that uniquely identifies a document; stored in the externalReference field of the document table
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.VersionId">
+            <summary>
+            The document plugin's version id that uniquely identifies one version of a document. If versioning is not
+            supported, this will be blank. When versioning is supported, blank values imply the <b>latest checked-in</b> version.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.Success">
+            <summary>
+            Did the call succeed. A successful call may still return a message or other return value.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.Type">
+            <summary>
+            How is the return value to be understood by the caller
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.Value">
+            <summary>
+            Return value, may be blank.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ReturnInfo.AdditionalInfo">
+            <summary>
+            Optional, additional information meant for further processing. This member is ignored for
+            return types None, Message and SoProtocol. It can be used to pass execution-dependent 
+            information to the code that handles CustomGui and Other.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.IPersonInfo">
+            <summary>
+            Interface providing information about a person
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.IPersonInfo.GetUserDefinedDecimal(System.Int32)">
+            <summary>
+            User-defined field 1-10 of the decimal (.NET double) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-10).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IPersonInfo.GetUserDefinedInt(System.Int32)">
+            <summary>
+            Get user-defined field 1-60 of the whole (.NET Int32) number type.
+            </summary>
+            <param name="fieldNo">Field number (1-60).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IPersonInfo.GetUserDefinedString(System.Int32)">
+            <summary>
+            Get user-defined field 1-49 of the text (.NET string) type.
+            </summary>
+            <param name="fieldNo">Field number (1-39).</param>
+            <returns>User-defined field value.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.IPersonInfo.GetInternationalAddress(System.Int32)">
+            <summary>
+            Get a line from the international address
+            </summary>
+            <param name="lineNo"></param>
+            <returns></returns>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PersonId">
+            <summary>
+            Primary key of the person
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.AssociateId">
+            <summary>
+            User id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.ContactId">
+            <summary>
+            Owner contact id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Department">
+            <summary>
+            Person department
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.MrMrs">
+            <summary>
+            Mr/Mrs field
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.FirstName">
+            <summary>
+            First name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.MiddleName">
+            <summary>
+            Middle name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.MiddleName2">
+            <summary>
+            Middle name if middle name is in use
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.LastName">
+            <summary>
+            Last name
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PersonNumber">
+            <summary>
+            The persons number
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Title">
+            <summary>
+            Title
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Salutation">
+            <summary>
+            Salutation
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Position">
+            <summary>
+            Position
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.DateOfBirth">
+            <summary>
+            Date of birth
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.MobilePhone">
+            <summary>
+            Mobile phone
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.MobilePhoneId">
+            <summary>
+            Mobile phone id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.OfficePhone">
+            <summary>
+            Direct phone
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.OfficePhoneId">
+            <summary>
+            Direct phone id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Fax">
+            <summary>
+            Direct fax
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.FaxId">
+            <summary>
+            Direct fax id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.FaxStripped">
+            <summary>
+            Fax. Any non digit characters are stripped.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PrivatePhone">
+            <summary>
+            Home phone
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PrivatePhoneId">
+            <summary>
+            Home phone id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Pager">
+            <summary>
+            Pager
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PagerId">
+            <summary>
+            Pager ID
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.EMailId">
+            <summary>
+            E-mail id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.EMail">
+            <summary>
+            E-mail
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.ChatId">
+            <summary>
+            Chat id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Chat">
+            <summary>
+            Chat
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.ChatProtocol">
+            <summary>
+            Chat protocol
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.VoipId">
+            <summary>
+            Voip id
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Voip">
+            <summary>
+            Voip
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.VoipService">
+            <summary>
+            Voip service
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Url">
+            <summary>
+            Voip
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.UrlId">
+            <summary>
+            Voip service
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Nomailing">
+            <summary>
+            Mail Stop (for American addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.UsePersonAddress">
+            <summary>
+            Use the person's postal address instead of the contact's address.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressLine1">
+            <summary>
+            Postal Address, line 1
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressLine1Extended">
+            <summary>
+            First address line, including Mail Stop (for American addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressLine2">
+            <summary>
+            Postal Address, line 2
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressLine3">
+            <summary>
+            Postal Address, line 3
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressCity">
+            <summary>
+            Postal town
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressCityFull">
+            <summary>
+            Postal town, state/province and zipcode (for American, Canadian and Australian addresses, e.g. Bedford, MA 01730).
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressZip">
+            <summary>
+            Postcode. (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressState">
+            <summary>
+            State/province (for American, Canadian and Australian addresses). (See also aucs.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressCounty">
+            <summary>
+             County (for UK addresses)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.PostalAddressStateAmericaCanadaAustralia">
+            <summary>
+            State/province (for American, Canadian and Australian addresses). (See also cszc.)
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.LineFeedGermany">
+            <summary>
+            Line feed for internal post in Germany
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Country">
+            <summary>
+            Country
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.Country2">
+            <summary>
+            Country if different from the sender's country
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.CountryCode">
+            <summary>
+            Country code
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IPersonInfo.CountryId">
+            <summary>
+            Country ID from database
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Security.SoSecurityTokenSupplierAttribute">
+            <summary>
+            Declaration of plugin capable of obtaining SecurityToken
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Security.SoSecurityTokenSupplierAttribute.#ctor(System.String)">
+            <summary>
+            Declaration of plugin capable of obtaining SecurityToken
+            </summary>
+            <param name="name">Plugin name</param>        
+        </member>
+        <member name="T:SuperOffice.Security.ISoSecurityTokenSupplier">
+            <summary>
+            Interface for plugin grabbing Security Tokens
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Security.ISoSecurityTokenSupplier.AppendSecurityToken(System.Collections.Generic.IList{System.IdentityModel.Tokens.SecurityToken})">
+            <summary>
+            Append grabbed Security Tokens to the list of Security Tokens
+            </summary>
+            <param name="tokens">List of Security Tokens</param>
+        </member>
+        <member name="T:SuperOffice.Events.EventEnginePluginAttribute">
+            <summary>
+            Attribute for EventEngine plugins, implementing the <see cref="T:SuperOffice.Events.IEventEngine"/> interface
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Events.EventEnginePluginAttribute.#ctor(System.String)">
+            <summary>
+            </summary>
+            <param name="name">Plugin name, arbitrary string</param>        
+        </member>
+        <member name="T:SuperOffice.Events.IEventEngine">
+            <summary>
+            Interface for Event engine
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Events.IEventEngine.Init">
+            <summary>
+            Initalization of engine
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Events.IEventEngine.SendEvent(System.String,System.Boolean,System.Object@,SuperOffice.Events.SendEventArguments@)">
+            <summary>
+            Execute the event.
+            </summary>
+            <param name="methodName"></param>
+            <param name="async"></param>
+            <param name="state"></param>
+            <param name="arguments"></param>
+        </member>
+        <member name="T:SuperOffice.CRM.IDocumentTemplateInfo">
+            <summary>
+            Interface providing information about the document template.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.Id">
+            <summary>
+            Primary key of the document template.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.Name">
+            <summary>
+            Name of the document template (in lists).
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.Rank">
+            <summary>
+            Order for the document template.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.Tooltip">
+            <summary>
+            Tooltip for the document template
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.IsDeleted">
+            <summary>
+            True, if the document is deleted.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.IDocumentTemplateInfo.FileName">
+            <summary>
+            Physical name of the document template.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Events.SendEventArguments">
+            <summary>
+            SendEventArguments contains information for executing a new event from SoEventManager.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Events.SendEventArguments.ArgumentTypes">
+            <summary>
+            The types of the parameters to the method call
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Events.SendEventArguments.Arguments">
+            <summary>
+            The values of the parameters to the method call
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Events.SendEventArguments.ReturnType">
+            <summary>
+            Type of the result of the method call
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Events.SendEventArguments.ReturnValue">
+            <summary>
+            Value of the result of the method call
+            </summary>
+        </member>
+        <member name="T:SuperOffice.CRM.ISelectionInfo">
+            <summary>
+            Interface providing information about a selection.
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISelectionInfo.SelectionId">
+            <summary>
+            Primary key of the selection record
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISelectionInfo.Name">
+            <summary>
+            Name of the selection
+            </summary>
+        </member>
+        <member name="P:SuperOffice.CRM.ISelectionInfo.SelectedMembers">
+            <summary>
+            Highlighted list from selection. (space separated list consisting of comma separated contacts and persons from selection.)
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.Layout">
+            <summary>
+            <b>Warning: Preliminary, informal code; subject to change!</b><para/>Layout type for control containers
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Layout.Flow">
+            <summary>
+            The controls in the container should have a Flow layout, one after another
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Layout.Grid">
+            <summary>
+            The controls in the container should have a Grid layout, with a specified number of columns and rows
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Layout.Absolute">
+            <summary>
+            The controls in the container should be positioned with absolute coordinates for each control
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.View">
+            <summary>
+            <b>Warning: Preliminary, informal code; subject to change!</b><para/>This class represents the definition of a View - the content of one tab, in a multi-tab card
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.View.ControlGroups">
+            <summary>
+            The controls inside this container
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.View.Layout">
+            <summary>
+            The layout applied to the controls inside this container
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.ControlGroup">
+            <summary>
+            <b>Warning: Preliminary, informal code; subject to change!</b><para/>This class represents the definition of a ControlGroup. One View
+            may contain multiple control groups, each with an inner layout and set of concrete controls
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.ControlGroup.Controls">
+            <summary>
+            The controls inside this container
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.ControlGroup.Layout">
+            <summary>
+            The layout applied to the controls inside this container
+            </summary>
+        </member>
+        <member name="T:SuperOffice.UI.Configuration.Control">
+            <summary>
+            <b>Warning: Preliminary, informal code; subject to change!</b><para/>This is the base class of display controls, and defines common properties
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Control.ID">
+            <summary>
+            The globally unique ID that identifies this control in the GUI
+            </summary>
+        </member>
+        <member name="F:SuperOffice.UI.Configuration.Control.DataSource">
+            <summary>
+            The name of the data field to which this control is bound. This will typically be of the form
+            'Document.ExtraFields.Myfield', where MyField is the name used as key in the IDocumentInfo.ExtraFields dictionary
+            that is passed into and out of the document plugin. The name should have the form PluginName:FieldName to ensure
+            uniqueness across plugins.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Security.TokenValidationResult">
+            <summary>
+            Result of validation process
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Security.TokenValidationResult.Indifferent">
+            <summary>
+            The plugin is indifferent to the authentication.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Security.TokenValidationResult.Valid">
+            <summary>
+            The plugin can positively confirm the authentication.
+            </summary>
+        </member>
+        <member name="F:SuperOffice.Security.TokenValidationResult.Rejected">
+            <summary>
+            The plugin rejects the authentication.
+            </summary>
+        </member>
+        <member name="T:SuperOffice.Security.ISoSecurityTokenValidator">
+            <summary>
+            Interface for plugin capable validating the authentication process
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Security.ISoSecurityTokenValidator.TryValidateTokens(System.Collections.Generic.IList{System.IdentityModel.Tokens.SecurityToken},System.String@)">
+            <summary>
+            Validate the tokens before they are resolved.  The Authentication 
+            process fails if one of the validators return Rejected.
+            </summary>
+            <param name="tokens">Tokens to validate</param>
+            <param name="reason">The reason for the result.  This value should 
+            always be set to something meaningfull if Rejected is returned.</param>
+            <returns>Result of validation.</returns>
+        </member>
+        <member name="T:SuperOffice.Security.SoSecurityTokenValidatorAttribute">
+            <summary>
+            Declaration of plugin capable validating the authentication process
+            </summary>
+        </member>
+        <member name="M:SuperOffice.Security.SoSecurityTokenValidatorAttribute.#ctor(System.String)">
+            <summary>
+            Declaration of plugin capable validating the authentication process
+            </summary>
+            <param name="name">Plugin name</param>        
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.ITempFileProvider">
+            <summary>
+            Interface defining a plugin that offers services for reading and writing temporary files.
+            </summary>
+            <remarks>
+            Temporary files are used in several contexts - when transferring documents in chunks into and out of
+            NetServer; when uploading a document to be saved through the Document dialog, and when handling mails
+            and attachments.
+            <para/>
+            The default implementation supplied with NetServer provides these services using temporary files,
+            controlled by the Documents section in the config file with respect to path and impersonation. 
+            Alternative implementations, for instance using database or in-memory storage, are also possible.
+            The term <b>file</b> is therefore not to be taken literally - though whatever implementation is
+            actually used, the end result should support both sequential and random access, just like files.
+            <para/>
+            Classes implementing this interface also need to be marked with
+            the <see cref="T:SuperOffice.CRM.Documents.TempFileProviderAttribute"/> attribute.
+            </remarks>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)">
+            <summary>
+            Create a temporary 'file'
+            </summary>
+            <param name="name">Name to be used for later access. The actual key used by the implementation should also take
+            into account the associate ID, since multiple concurrent users may use the same name, and that does <b>not</b> mean
+            file sharing between users.</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.CheckIfFileExists(System.String)">
+            <summary>
+            Check if a named temporary file/storage area exists
+            </summary>
+            <param name="name">File name to check</param>
+            <returns>True if such a file exists</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.ReadFileComplete(System.String)">
+            <summary>
+            Make the complete content of the file available as a stream (sequential read)
+            </summary>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+            <returns>Stream representing the entire current contents of the file</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.ReadFileChunk(System.String,System.Int64,System.Byte[])">
+            <summary>
+            Read a chunk of data from the file (random access read)
+            </summary>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+            <param name="filePosition">Position in bytes, starting at 0, to start reading from</param>
+            <param name="bufferToUpdate">Data buffer to update. The length of this buffer is the maximum
+            number of bytes that will be read</param>
+            <returns>Actual number of bytes read. If less than the length of the buffer, end-of-file is indicated</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.WriteFileComplete(System.String,System.IO.Stream)">
+            <summary>
+            (Over)write - not append - the complete content of the file (sequential write). Any previous content is lost
+            </summary>
+            <param name="data">Stream to read data from</param>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.WriteFileChunk(System.String,System.Int64,System.Byte[])">
+            <summary>
+            Write a chunk of data to the file (random access write)
+            </summary>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+            <param name="filePosition">Position in bytes, starting at 0, that will be written to</param>
+            <param name="bufferToWriteFrom">Buffer to write; buffer length determines the size of the write operation</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.DeleteFile(System.String)">
+            <summary>
+            Delete a temporary file
+            </summary>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.ITempFileProvider.GetLength(System.String)">
+            <summary>
+            Get the current length in bytes of a temporary file
+            </summary>
+            <param name="name">Name identifying the file. See comments in the <see cref="M:SuperOffice.CRM.Documents.ITempFileProvider.CreateFile(System.String)"/>
+            method for more information on how file names are handled.</param>
+            <returns>Length of file in bytes; -1 if file does not exist</returns>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.TempFileProviderAttribute">
+            <summary>
+            Attribute identifying a class as a provider of temp file services. The class must also
+            implement the <see cref="T:SuperOffice.CRM.Documents.ITempFileProvider"/> interface.
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.TempFileProviderAttribute.#ctor(System.String)">
+            <summary>
+            Create a temp file provider plugin with the default priority int.MaxValue / 2
+            </summary>
+            <param name="name">Name of provider</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.TempFileProviderAttribute.#ctor(System.String,System.Int32)">
+            <summary>
+            Create a temp file provider plugin with a specific priority. Lower values win.
+            </summary>
+            <param name="name">Name of provider</param>
+            <param name="priority">Priority value</param>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.IDocumentPlugin2">
+            <summary>
+            This is the API that needs to be implemented by document plugins - objects that provide the
+            link between a document repository and SuperOffice NetServer
+            </summary>
+            <remarks>
+            A document plugin must support basic operations for storing and retrieving documents, according 
+            to keys it generates itself. Optionally, it can support locking, versions, and WebDAV access.
+            <para/>
+            Locking and versioning, if supported, can be selected on a per-document basis - support for versioning
+            does not have to imply that <b>every</b> document in the plugins' repository is versioned.
+            <para/>
+            Custom GUI declaration is not part of this interface, since the various clients that exist, may
+            have different ways of declaring or implementing custom user interfaces. A document plugin
+            that wants to implement a custom GUI should additionally implement the
+            <see cref="T:SuperOffice.UI.Configuration.ICustomUIProvider"/> or other (future) GUI-declaration interface,
+            thereby making it possible to add GUI options in the future, without changing this basic
+            document plugin interface.
+            </remarks>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetPluginCapabilities">
+            <summary>
+            Get a list of capabilities (functionality) supported by this document plugin
+            </summary>
+            <remarks>
+            The purpose of this call is to enable NetServer and clients to determine what functionality this plugin can offer. 
+            Plugins should populate the return array with all capabilities they know about. NetServer will call this API only once.
+            <para/>
+            As an example of use, the Document archive provider inside NetServer will look at plugin capabilities, 
+            and read document properties as appropriate. 
+            <para/>
+            i.e. if “fast-lock-status=false”, then the archive provider 
+            will not call the IsCheckedOut(externalReference) function. Otherwise it will make the call (if the client has requested
+            the appropriate column in the GUI), so that the user can see which documents are checked out.
+            <para/>
+            String constants for capabilities are available in the <see cref="T:SuperOffice.CRM.Documents.Constants.Capabilities"/> static class.
+            </remarks>
+            <returns>Array of name=value strings listing all known capabilities and their values</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentProperties(System.String,System.Int32,System.String[])">
+            <summary>
+            Get the values of certain properties, for a given document
+            </summary>
+            <remarks>
+            Each document can have a number of properties associated with it. A set of standard properties
+            is defined in the <see cref="T:SuperOffice.CRM.Documents.Constants.Properties"/> class. Ideally, retrieving properties should
+            be a lightweight operation.
+            <para/>
+            Note that 'properties' are a one-way mechanism where the document plugin provides information about
+            the document or certain aspects of it. This is not the same as document-specific
+            metadata, which is handled by the <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadMetaData(System.String,System.Int32)"/> and <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.SaveMetaData(SuperOffice.CRM.IDocumentInfo,System.String[])"/>
+            methods.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="requestedProperties">Array of property strings, for which values are requested</param>
+            <returns>Array of name=value pairs, where the name is one of the requested property strings, and the value
+            is the value of that property for the given document.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentCommands(System.String,System.Int32,System.String[])">
+            <summary>
+            Get a list of custom commands, applicable to a specific document. Note that commands related to
+            standard locking and versioning operations have their own API calls and are not 'custom commands' in this sense.
+            </summary>
+            <remarks>
+            This API is called before a menu, task button or other GUI item that gives access to document-specific commands is shown.
+            It is used to populate the GUI with available commands for a particular document, the results are not cached by the GUI.
+            <para/>
+            Depending on the return type indicated in the command, the command might be filtered by GUI. More information can
+            be found in the <see cref="T:SuperOffice.CRM.Documents.CommandInfo"/> topic.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type.</param>
+            <returns>Array of command descriptions. If there are no custom commands available, an empty array should be returned.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.ExecuteDocumentCommand(System.String,System.Int32,System.String,System.String[],System.String,System.String[])">
+            <summary>
+            Execute a custom command on a specified document and version
+            </summary>
+            <remarks>
+            This command is called when the user chooses an action item from a dropdown/context menu. 
+            It is also reflected in the DocumentAgent service interface, so that custom GUI’s and external 
+            code can directly execute document plugin commands; this is useful if a plugin also has some 
+            corresponding custom GUI that needs to execute commands depending on user interaction.
+            <para/>
+            The parameter <paramref name="allowedReturnTypes"/> can be used by clients to hint to the plugin
+            what kind of return value processing is available. For instance, a mobile client might
+            only offer None and Message, and this information can be used by the document plugin to adapt
+            the processing of a command, if it wants to (for instance, use default values instead of
+            triggering some more advanced workflow).
+            <para/>
+            The command is obtained from the <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentCommands(System.String,System.Int32,System.String[])"/> method.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, uniquely identifies the document</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="versionId">Version identifier, blank implies 'latest' version</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type.</param>
+            <param name="command">Command name, taken from an earlier call to <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentCommands(System.String,System.Int32,System.String[])"/>
+            - or any other command name that is understood by the provider. 'Private' commands that
+            are not declared in GetDocumentCommands but are known to the authors of custom GUI code
+            or OK.</param>
+            <param name="additionalData">Array of strings containing whatever additional data the command
+            may need. This parameter is intended for authors of more complex custom GUI's and works as
+            a tunnel between the ultimate client and the document plugin. Standard GUI made by SuperOffice,
+            such as a context menu connected to a document item in an archive, will not populate this
+            member.<br/>It is strongly suggested that the convention of using name=value for each string
+            array element be followed here.</param>
+            <returns>Return value object, specifying failure or success plus any optional, additional processing to be triggered</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadMetaData(System.String,System.Int32)">
+            <summary>
+            Retrieve metadata owned by the plugin/repository, related to one document (excluding version-dependent metadata)
+            </summary>
+            <remarks>
+            A document plugin may consume and provide an arbitrary number of metadata fields. These are placed
+            in a string, string dictionary, representing name/value pairs. This call should <b>not</b>
+            retrieve metadata related to any particular version, only data related to the document as a whole.
+            <para/>
+            The NetServer service call DocumentAgent.GetDocumentEntity will (among other things) result in a call 
+            to this API to populate the ExtraFields property of the document entity carrier. Note, however, 
+            that the carrier handed over to the client may contain other fields in addition to those 
+            supplied by the document plugin, since the extrafields mechanism is generic and 
+            there may be other metadata providers along the line.
+            <para/>
+            Attribute names should be prefixed with the name of the document plugin, to maintain global uniqueness.
+            <para/>
+            It is <b>strongly suggested</b> that non-string data be formatted according to the rules followed by the 
+            <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class, to avoid problems
+            when parsing dates and floating-point types between different cultures and platforms.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, uniquely identifies the document</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <returns>Array of name=value strings, each representing one key and one value. The same
+            convention is used here as in the <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetPluginCapabilities"/> and 
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentProperties(System.String,System.Int32,System.String[])"/> methods.<para/>Using this format, rather than
+            a string/string dictionary, avoids serialization and cross-platform issues (there is
+            no standard way of serializing dictionary-type collections cross-platform).</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadVersionInfo(System.String,System.Int32,System.String)">
+            <summary>
+            Retrieve metadata owned by the plugin/repository, related to one particular
+            version of one document
+            </summary>
+            <remarks>
+            A document plugin may consume and provide an arbitrary number of metadata fields. These are placed
+            in a string, string dictionary, representing name/value pairs. This call should only retrieve
+            metadata related to a version.
+            <para/>
+            The NetServer service call DocumentAgent.GetDocumentEntity will (among other things) result in a call 
+            to this API to populate the VersionInfo property of the document entity carrier. 
+            <para/>
+            Attribute names should be prefixed with the name of the document plugin, to maintain global uniqueness.
+            <para/>
+            It is <b>strongly suggested</b> that non-string data be formatted according to the rules followed by the 
+            <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class, to avoid problems
+            when parsing dates and floating-point types between different cultures and platforms.
+            <para/>
+            To efficiently retrieve information about <b>all</b> versions, use the 
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetVersionList(System.String,System.Int32)"/> method, instead of iterating
+            over this method.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, uniquely identifies the document</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="versionId">Version identifier, blank implies 'latest' version</param>
+            <returns>Fully populated version info structure</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.SaveMetaData(SuperOffice.CRM.IDocumentInfo,System.String[])">
+            <summary>
+            Store/update plugin-dependent document metadata in the repository
+            </summary>
+            <remarks>
+            This call is made when the document metadata should be stored, and is the complement of the
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadMetaData(System.String,System.Int32)"/> method.
+            The document plugin should extract whatever elements it 
+            recognizes from the pluginData name/value dictionary. Failure to recognize an element should not cause an exception, 
+            as there may be other plugins along the line (not document plugins, but service-level field providers) that own the data. 
+            Likewise, absence of a value should be taken to imply “no change” to that value - not "delete".
+            <para/>
+            It is <b>strongly suggested</b> that non-string data be formatted according to the rules followed by the 
+            <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class, to avoid problems
+            when parsing dates and floating-point types between different cultures and platforms.
+            </remarks>
+            <param name="incomingInfo">SuperOffice metadata. Note that the plugin is <b>not</b> responsible
+            for storing this data; however, it is allowed to look at it, in case it influences how the document
+            is stored. However, it should always be possible to retrieve a document using the ExternalReference
+            or DocumentId keys alone.</param>
+            <param name="pluginData">Name/value dictionary containing metadata</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.SaveVersionInfo(SuperOffice.CRM.Documents.VersionInfo)">
+            <summary>
+            Store/update plugin-dependent document version metadata in the repository
+            </summary>
+            <remarks>
+            This call is made when the document <b>version</b> metadata should be stored, and is the complement of the
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadVersionInfo(System.String,System.Int32,System.String)"/> method.
+            The document plugin should extract whatever elements it 
+            recognizes from the pluginData name/value dictionary. Failure to recognize an element should not cause an exception, 
+            as there may be other plugins along the line (not document plugins, but service-level field providers) that own the data. 
+            Likewise, absence of a value should be taken to imply “no change” to that value - not "delete".
+            <para/>
+            It is <b>strongly suggested</b> that non-string data be formatted according to the rules followed by the 
+            <see cref="!:SuperOffice.CRM.Globalization.CultureDataFormatter"/> class, to avoid problems
+            when parsing dates and floating-point types between different cultures and platforms.
+            </remarks>
+            <param name="versionInfo">Version information to be saved</param>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.Exists(System.String,System.Int32)">
+            <summary>
+            Determine if the document exists in the repository
+            </summary>
+            <remarks>
+            The plugin should declare, through the <see cref="F:SuperOffice.CRM.Documents.Constants.Capabilities.FastExists"/> property,
+            whether this call is highly efficient or not. If it is efficient, then document archive providers and similar code
+            will call it when populating an archive, otherwise not.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per document</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <returns>true if the document exists in the repository, otherwise false</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetLength(System.String,System.Int32,System.String)">
+            <summary>
+            Return the length of the physical document. This should be an efficient method
+            </summary>
+            <param name="externalReference">Document key used by the document plugin, unique per document</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="versionId">Version identifier, blank implies 'latest' version</param>
+            <returns>Physical document length in bytes - this should be the same as the length of the stream
+            returned by the LoadDocumentStream method.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetTemplates(System.String)">
+            <summary>
+            Get a list of template documents stored in this plugin
+            </summary>
+            <remarks>
+            Document templates can be stored as documents in repositories handled by document
+            plugins. This API should return information about all known templates that match
+            the optional searchString. 'StartsWith' semantics are recommended for the search string.
+            <para/>
+            The client GUI will generally request templates through the SoList named 'DocumentTemplate'.
+            Document plugins that want to provide grouping, filtering and other advanced list 
+            functionality may provide a custom implementation of that SoList provider. Otherwise,
+            the standard implementation will be used, which calls this API to obtain the 
+            template information.
+            <para/>
+            The template info contains the name and a template ext.ref value that can be used with 
+            <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadDocumentTemplateStream(System.String,System.Int32,System.String)"/> to retrieve the document template stream.
+            </remarks>
+            <param name="searchString">Search string, may be blank. If non-blank, then only templates
+            that match the string should be returned. 'StartsWith' semantics are recommended.</param>
+            <returns>List of matching templates</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadDocumentTemplateStream(System.String,System.Int32,System.String)">
+            <summary>
+            Get the document template content as a stream. NetServer will read-to-end and close this stream
+            </summary>
+            <remarks>
+            Document templates may be stored in a repository, with or without special content tags.
+            Because a document template does not have a corresponding document record within
+            SuperOffice, there is no documentId to identify it.
+            <para/>
+            This call is used by NetServer to retrieve a document template based on either
+            an externalreference value stored in the corresponding doctmpl record,
+            or the Id of the doctmpl record itself. The document plugin is free
+            to use either method of identification.
+            </remarks>
+            <param name="templateExternalReference">Document Template key - used by the document plugin to identify the template file</param>
+            <param name="documentTemplateId">Document template Id used within the Superoffice database</param>
+            <param name="languageCode">Language (en-US, nb-NO, etc) that the user is using in the user interface. Can be used to select language-specific templates.</param>
+            <returns>Stream containing the template content</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetTemplateExtension(System.String,System.Int32)">
+            <summary>
+            Get the "extension" for the template, i.e., what the file extension would have been - to 
+            help identify the stream content format
+            </summary>
+            <remarks>
+            Template documents are generally created in text editors and stored as files of some kind. The
+            file extension indicates the kind of document - doc, docx, xls, txt, and so on. While the template
+            may be stored inside the document repository as any kind of data byte collection, a concept
+            akin to the file extension is still needed to help identify the document format, ahead of actually
+            reading the template content.
+            </remarks>
+            <param name="templateExternalReference">Document Template key - used by the document plugin to identify the template file</param>
+            <param name="documentTemplateId">Document template Id used within the Superoffice database</param>
+            <returns>String equivalent to a file extension, for instance "docx"</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CreateDocument(SuperOffice.CRM.IDocumentInfo,System.String@,System.String[],System.String,System.String[])">
+            <summary>
+            Create an empty document file in the repository, returning the external reference that 
+            uniquely identifies the document in the repository.
+            </summary>
+            <remarks>
+            Execution of this method should result in the creation of a document instance in the
+            underlying repository, with empty content. If locking is supported, the status should
+            be 'Checked-out'; the document should not be visible to other users. If locking is not 
+            supported, a zero-length content should be the result.
+            <para/>
+            All metadata should be saved, an externalReference key should be assigned, and
+            the file name/document name validated and reserved.
+            <para/><b>Notes on semantics</b><br/>
+            The IDocumentInfo.<see cref="!:SuperOffice.CRM.IDocumentInfo.Semantics"/> property is used to specify the
+            locking/versioning semantics requested and implemented for a document. Semantics actually implemtned
+            will be the lowest of what is requested and what is supported. Thus, a document may request 
+            <see cref="!:SuperOffice.Data.DocumentSemantics.None"/> semantics even if versioning is optionally supported
+            by the document plugin, and in that case no versioning or locking should be performed.
+            <para/>
+            On creation, if locking and/or versioning is supported and requested, then the document stream should
+            be saved to a temporary area. Calls to GetDocumentStream should return an empty stream until the first
+            call to CheckinDocument has succeeded. The result of that Checkin call will be the base version 
+            (version 1).
+            <para/>
+            Locking semantics are set on creation and cannot be changed later.
+            <para/>
+            NetServer will typically call several plugin functions create a new document like this:
+            <list type="bullet">
+             <item>
+              <description>plugin.<see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadDocumentTemplateStream(System.String,System.Int32,System.String)"/> </description>
+             </item>
+             <item>
+              <description>(NetServer saves document template stream to temp file and 
+              runs tag substitution on the file, replacing &lt;name&gt; with company name, etc.)</description>
+             </item>
+             <item>
+              <description>plugin.CreateDocument - creates empty file in repository.</description>
+             </item>
+             <item>
+              <description>plugin.<see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.SaveDocumentFromStream(SuperOffice.CRM.IDocumentInfo,System.String[],System.IO.Stream)"/>(temp-file) - moves temp file into repository, replacing the empty file.</description>
+             </item>
+            </list>
+            </remarks>
+            <param name="incomingInfo">SuperOffice metadata for the document, including the document Id
+            and locking/versioning sematics requested for this document.</param>
+            <param name="fileName">Suggested file name/document name. The document plugin must validate this
+            name and amend it if needed (this is a ref parameter). If the name needs to be changed
+            for any reason, a new and valid name must be generated by the plugin, and returned
+            to the caller.</param>
+            <param name="extraFields">Plugin-dependent metadata for the document as a whole. The
+            usual caveats apply, i.e., there may be name/value pairs in the parameter that
+            belong to other parts of the system. Failure to recognize a name is not an error.</param>
+            <param name="versionDecription">Description of the initial version, if versioning is supported
+            and enabled for the document.</param>
+            <param name="versionExtraFields">Plugin-dependent metadata for the initial version</param>
+            <returns>The external reference that identifies this document.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.SaveDocumentFromStream(SuperOffice.CRM.IDocumentInfo,System.String[],System.IO.Stream)">
+            <summary>
+            Save the stream as the document content in the repository; depending on the state, this
+            may imply creating a temporary save pending a final checkin, or an immediately visible result.
+            </summary>
+            <remarks>
+            An empty document must have been created in the repository with <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CreateDocument(SuperOffice.CRM.IDocumentInfo,System.String@,System.String[],System.String,System.String[])"/> before content
+            can be streamed into it.
+            <para/>
+            If the document is currently checked out to the current user, then the stream should be saved, 
+            but this call does not imply the automatic creation of a new version (visible to other users) 
+            or automatic checkin. However, it is an advantage if subsequent GetDocument calls made by 
+            the same user using the same key return the latest known content – while other users see 
+            the latest checked-in version.
+            <para/>
+            If the plugin does not support locking and versioning (or such semantics are not requested, see below), 
+            then each call to this API overwrites 
+            any prior content completely and becomes the new, official content immediately. The Save operation 
+            should be atomic, and should not destroy earlier content if it fails.
+            <para/>
+            If locking is supported and requested, the document is checked out and some other associate than the one 
+            that has checked it out calls this API, a failure message should be returned.
+            </remarks>
+            <param name="incomingInfo">Incoming document metadata, used to identify the document. Metadata
+            changes are <b>not</b> to be checked or saved by this operation - only the document stream is saved.</param>
+            <param name="content">Document content, a binary stream about which nothing is assumed. The
+            document plugin should read-to-end and close this stream.</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type. ("None", "Message", "SoProtocol", "CustomGUI", "Other")</param>
+            <returns>Return value, indicating success/failure and any optional processing to be performed</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.LoadDocumentStream(SuperOffice.CRM.IDocumentInfo,System.String)">
+            <summary>
+            Get document content as a stream. NetServer will read-to-end and close this stream.
+            </summary>
+            <remarks>
+            It is up to the document plugin whether it can open a stream directly into the underlying repository, 
+            or whether it has to extract the document to some temporary area and then stream that – 
+            however, the fewer buffers the better.
+            </remarks>
+            <param name="incomingInfo">Fully populated document metadata, used to identify the document.</param>
+            <param name="versionId">Optional version identifier, blank implies 'latest' version</param>
+            <returns>Document content stream</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetDocumentUrl(SuperOffice.CRM.IDocumentInfo,System.String,System.Boolean)">
+            <summary>
+            Get a WebDAV-compliant URL referring to the given document
+            </summary>
+            <remarks>
+            Document plugins may support document access via WebDAV. This call is used to retrieve a WebDAV url that 
+            will give the specified access to the document. This URL will be passed to the ultimate client 
+            (most probably a text editor application), and control will not return to NetServer.
+            <para/>
+            The string returned here should be a fully resolved URL that can be given directly to the editor application.
+            </remarks>
+            <param name="incomingInfo">Fully populated document metadata, used to identify the document.</param>
+            <param name="versionId">Optional version identifier, blank implies 'latest' version</param>
+            <param name="writeableUrl">If true, then the request URL should allow the document editor to write content
+            back to the repository; otherwise, a url that does not support writeback should be supplied
+            if possible.</param>
+            <returns>WebDAV-compliant URL that gives access to the document. If the document plugin
+            does not support WebDAV access, then a blank string should be returned.</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.DeleteDocument(System.String,System.Int32,System.String[])">
+            <summary>
+            Delete a document, all versions and all metadata from the repository
+            </summary>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type. ("None", "Message", "SoProtocol", "CustomGUI", "Other")</param>
+            <returns>Return value, indicating success/failure and any optional processing to be performed</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.RenameDocument(System.String,System.Int32,System.String)">
+            <summary>
+            Rename a document in the repository
+            </summary>
+            <remarks>
+            The document name should be changed from the existing to the new name. However,
+            if the new name is not valid (or collides with an existing name of some other
+            document), then the plugin should amend the name to a valid one and return
+            it, instead of throwing an exception.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="suggestedNewName">Suggested new document name</param>
+            <returns>Actual new document name, limited to 254 characters</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetCheckoutState(System.String,System.Int32)">
+            <summary>
+            Get the checkout state of a document
+            </summary>
+            <remarks>
+            This API is called from inside document archive providers if the plugin has declared that it
+            supports fast fetching of this attribute. If the document plugin does not support locking or
+            versioning, then the return value should have state NotCheckedOut, associate id 0 and blank name.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <returns>Object that describes the checkout state of the document</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CheckoutDocument(System.String,System.Int32,System.String[])">
+            <summary>
+            Check out the document for editing
+            </summary>
+            <remarks>
+            A document plugin that supports versioning may internally prepare to receive new content and 
+            prepare a new internal version, but a subsequent <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetVersionList(System.String,System.Int32)"/> call should <b>not</b> 
+            show this version – not until <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CheckinDocument(System.String,System.Int32,System.String[],System.String,System.String[])"/> has been called. 
+            <para/>
+            After the completion of this call, the document is in checked out state and <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetCheckoutState(System.String,System.Int32)"/> 
+            should return “Own” as the status. <see cref="!:PutDocumentFromStream"/> calls on behalf of other users should
+            fail, as should <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CheckoutDocument(System.String,System.Int32,System.String[])"/> and <see cref="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CheckinDocument(System.String,System.Int32,System.String[],System.String,System.String[])"/> calls on behalf of other users.
+            <para/>
+            If the document plugin does not support locking or versioning, then this call should perform no action.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type. ("None", "Message", "SoProtocol", "CustomGUI", "Other")</param>
+            <returns>Return value, indicating success/failure and any optional processing to be performed</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.CheckinDocument(System.String,System.Int32,System.String[],System.String,System.String[])">
+            <summary>
+            Check in a currently checked-out document
+            </summary>
+            <remarks>
+            If the document plugin supports locking and the requesting user is the one who checked out the document, 
+            then the last-saved content by that user should become the new publicly visible content, and 
+            the checkout state should be reset. Calls by other users should result in failure and no state change.
+            <para/>
+            If the document plugin does not support locking or versioning, then this call should perform no action.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type. ("None", "Message", "SoProtocol", "CustomGUI", "Other")</param>
+            <returns>Return value, indicating success/failure and any optional processing to be performed</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.UndoCheckoutDocument(System.String,System.Int32,System.String[])">
+            <summary>
+            Undo (abandon) a checkout
+            </summary>
+            <remarks>
+            If the document plugin supports locking and the requesting user is the one who checked out the document, 
+            then any content saved since the checkout should be discarded and the checkout state reset. 
+            The content will be as before checkout. 
+            <para/>
+            Calls by other users should result in failure and no state change – except if the calling user has the right to force an undo
+            <para/>
+            If the document plugin does not support locking or versioning, then this call should perform no action.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <param name="allowedReturnTypes">Array of names of allowed return types; if this array is
+            empty then no limits are placed on return type. ("None", "Message", "SoProtocol", "CustomGUI", "Other")</param>
+            <returns>Return value, indicating success/failure and any optional processing to be performed</returns>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.IDocumentPlugin2.GetVersionList(System.String,System.Int32)">
+            <summary>
+            Get the list of current versions for the given document
+            </summary>
+            <remarks>
+            The list should not include an “in-work” version, if the document is currently checked out – only 
+            versions visible and accessible to any authorized user.
+            <para/>
+            If the document plugin does not support versioning, then this call should return an empty array.
+            </remarks>
+            <param name="externalReference">Document key used by the document plugin, unique per plugin</param>
+            <param name="documentId">Document key used inside the SuperOffice database</param>
+            <returns>Array of objects describing the existing, committed versions for this document</returns>
+        </member>
+        <member name="T:SuperOffice.CRM.Documents.DocumentPlugin2Attribute">
+            <summary>
+            Attribute for document plugins, implementing the <see cref="T:SuperOffice.CRM.Documents.IDocumentPlugin2"/> interface
+            </summary>
+        </member>
+        <member name="M:SuperOffice.CRM.Documents.DocumentPlugin2Attribute.#ctor(System.String,System.Int32)">
+            <summary>
+            Declare a plugin to be a document plugin, with a numeric ID. IDs are allocated by
+            SuperOffice DevNet. ID's below 1000 are reserved for use by SuperOffice.
+            </summary>
+            <param name="name">Plugin name, arbitrary string</param>
+            <param name="pluginId">Plugin ID, allocated by SuperOffice DevNet. <b>MUST</b> be unique</param>
+        </member>
+        <member name="P:SuperOffice.CRM.Documents.DocumentPlugin2Attribute.PluginId">
+            <summary>
+            The numeric plugin ID, which matches the ID used in the doctmpl table
+            </summary>
+        </member>
+    </members>
+</doc>
